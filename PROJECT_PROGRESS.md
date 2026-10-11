@@ -421,3 +421,21 @@ Complete the original Slice 1 from `HomeRedi_Current_State.md`, one behavior at 
 **Verification:** `JAVA_TOOL_OPTIONS=-Djava.io.tmpdir=/home/mxr/Documents/Projects/HomeRedi/.tmp-java mvn clean test` passed with 21 tests, 0 failures, and 0 errors. The PostgreSQL integration tests ran on PostgreSQL 17 in Testcontainers.
 
 **Next:** implement inspection completion through the application service and persist both the inspection's `COMPLETED` status and its Unit's `INSPECTED` status in one transaction. Begin with the database-backed behavior test for completion and verify that attempting completion with a pending task leaves both records unchanged.
+
+### Checkpoint 26: Complete and persist the inspection
+
+**Date:** 2026-10-11
+
+**Goal:** let the caretaker complete an inspection when every task is passed, and persist the inspection and Unit transitions together.
+
+**Behavior and important cases:** when every task is `PASSED`, completion changes the inspection to `COMPLETED` and its Unit to `INSPECTED`. If any task is still `PENDING`, completion is rejected and the persisted inspection and Unit statuses stay unchanged.
+
+**Actions and outcomes:**
+
+- Added two PostgreSQL integration tests for successful completion and rejection while a task remains pending.
+- The clean compile showed `completeInspection` was not yet available on the service; this was a compile error, not a behavioral red. After adding the method shell, the database tests ran and failed at the unimplemented operation as expected.
+- Implemented `InspectionTaskService.completeInspection(inspectionId)`: load the inspection and its Unit, call the existing domain completion guard/transition, then save both records in one transaction.
+
+**Verification:** `JAVA_TOOL_OPTIONS=-Djava.io.tmpdir=/home/mxr/Documents/Projects/HomeRedi/.tmp-java mvn clean test` passed with 23 tests, 0 failures, and 0 errors. PostgreSQL integration tests ran on PostgreSQL 17 in Testcontainers.
+
+**Next:** define the HTTP contract for the external checkout trigger and caretaker inspection actions. `HomeRedi_Current_State.md` already lists the checkout route and response as open; resolve request fields, response shape, and error behavior before writing controller tests.

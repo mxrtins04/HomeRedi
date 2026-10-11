@@ -1,5 +1,6 @@
 package com.homredi.inspection;
 
+import com.homredi.unit.UnitRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,9 +10,11 @@ import java.util.NoSuchElementException;
 public class InspectionTaskService {
 
     private final PostCheckoutInspectionRepository inspections;
+    private final UnitRepository units;
 
-    public InspectionTaskService(PostCheckoutInspectionRepository inspections) {
+    public InspectionTaskService(PostCheckoutInspectionRepository inspections, UnitRepository units) {
         this.inspections = inspections;
+        this.units = units;
     }
 
     @Transactional
@@ -29,6 +32,17 @@ public class InspectionTaskService {
         Task task = findTask(inspection, taskId);
 
         inspection.uncheckTask(task);
+        inspections.save(inspection);
+    }
+
+    @Transactional
+    public void completeInspection(Long inspectionId) {
+        PostCheckoutInspection inspection = loadInspection(inspectionId);
+        var unit = units.findById(inspection.getUnitId())
+                .orElseThrow(() -> new NoSuchElementException("Unit not found: " + inspection.getUnitId()));
+
+        inspection.complete(unit);
+        units.save(unit);
         inspections.save(inspection);
     }
 

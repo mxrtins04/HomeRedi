@@ -166,4 +166,36 @@ class CheckoutPersistenceIntegrationTest {
                 .extracting(Task::getState)
                 .containsOnly(Task.State.PENDING);
     }
+
+    @Test
+    void completeInspection_persistsCompletedInspectionAndInspectedUnit_whenAllTasksArePassed() {
+        Unit unit = units.save(new Unit(null, "Unit 8", "Lagos", List.of("Bedroom", "Kitchen"),
+                Unit.TurnoverStatus.OCCUPIED));
+        PostCheckoutInspection inspection = checkoutInspectionService.startInspection(unit.getId(), "checkout-event-complete");
+        inspection.getTasks().forEach(task -> inspectionTaskService.checkTask(inspection.getId(), task.getId()));
+
+        inspectionTaskService.completeInspection(inspection.getId());
+
+        PostCheckoutInspection reloadedInspection = inspections.findById(inspection.getId()).orElseThrow();
+        Unit reloadedUnit = units.findById(unit.getId()).orElseThrow();
+        assertThat(reloadedInspection.getStatus()).isEqualTo(PostCheckoutInspection.Status.COMPLETED);
+        assertThat(reloadedInspection.getTasks()).extracting(Task::getState).containsOnly(Task.State.PASSED);
+        assertThat(reloadedUnit.getTurnoverStatus()).isEqualTo(Unit.TurnoverStatus.INSPECTED);
+    }
+
+    @Test
+    void completeInspection_keepsInspectionAndUnitStatusesUnchanged_whenAnyTaskIsPending() {
+        Unit unit = units.save(new Unit(null, "Unit 9", "Lagos", List.of("Bedroom", "Kitchen"),
+                Unit.TurnoverStatus.OCCUPIED));
+        PostCheckoutInspection inspection = checkoutInspectionService.startInspection(unit.getId(), "checkout-event-incomplete");
+
+        assertThatThrownBy(() -> inspectionTaskService.completeInspection(inspection.getId()))
+                .isInstanceOf(IllegalStateException.class);
+
+        PostCheckoutInspection reloadedInspection = inspections.findById(inspection.getId()).orElseThrow();
+        Unit reloadedUnit = units.findById(unit.getId()).orElseThrow();
+        assertThat(reloadedInspection.getStatus()).isEqualTo(PostCheckoutInspection.Status.PENDING);
+        assertThat(reloadedUnit.getTurnoverStatus()).isEqualTo(Unit.TurnoverStatus.AWAITING_INSPECTION);
+        assertThat(reloadedInspection.getTasks()).extracting(Task::getState).containsOnly(Task.State.PENDING);
+    }
 }

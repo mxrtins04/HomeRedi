@@ -8,7 +8,7 @@ This is the single source of truth for HomeRedi product and architecture decisio
 
 ## Where I am right now
 
-Slice 1 design is done: the ERD, the state machine, and the architecture decision are settled. Implementation is underway. The domain code creates a pending inspection and pending tasks from a unit's spaces at checkout; checkout moves the unit from `OCCUPIED` to `AWAITING_INSPECTION`. The application service can mark a task passed or return it to pending while the inspection remains open; both changes persist in PostgreSQL, and task IDs are scoped to their inspection. The inspection can be completed only after all tasks are passed, and completion moves the inspection to `COMPLETED` and its unit to `INSPECTED` in the same domain action; persistence for completion is still pending. Checkout persistence and retry handling are implemented. The HTTP API remains pending. See [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for the implementation history and current next step.
+Slice 1 design is done: the ERD, the state machine, and the architecture decision are settled. Implementation is underway. The domain code creates a pending inspection and pending tasks from a unit's spaces at checkout; checkout moves the unit from `OCCUPIED` to `AWAITING_INSPECTION`. The application service can mark a task passed or return it to pending while the inspection remains open; both changes persist in PostgreSQL, and task IDs are scoped to their inspection. The service can complete an inspection only after all tasks are passed; it persists the inspection as `COMPLETED` and its Unit as `INSPECTED` in one transaction. Checkout persistence and retry handling are implemented. The HTTP API remains pending. See [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for the implementation history and current next step.
 
 ## Project context
 
@@ -145,7 +145,7 @@ One deployable application. Package-by-feature code structure: each business cap
 - A unique constraint applies to the pair `(unit_id, checkout_event_id)`, not to `unit_id` alone. A unit can have many inspections as long as each checkout event ID for that unit is different.
 - Treat Unit and PostCheckoutInspection as separate persistence aggregates. PostCheckoutInspection owns its Tasks and stores a reference to the Unit by ID; it does not persist a nested Unit object. The application service coordinates unit and inspection updates inside one database transaction for checkout and inspection completion.
 - Use PostgreSQL-generated `BIGINT` primary keys for Unit, PostCheckoutInspection, and Task, represented as Java `Long` values. These internal row IDs are separate from the caller-supplied `checkoutEventId`.
-- The rest of the schema and migration files have not been designed or implemented yet.
+- The initial migration for Units, post-checkout inspections, and tasks is implemented. Future schema changes belong in later versioned migrations as the remaining slices are designed.
 
 ## Open items
 
